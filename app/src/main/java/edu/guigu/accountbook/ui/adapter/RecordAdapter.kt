@@ -1,36 +1,27 @@
 package edu.guigu.accountbook.ui.adapter
 
+import android.graphics.Color
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import edu.guigu.accountbook.R
+import edu.guigu.accountbook.data.model.Record
 import edu.guigu.accountbook.databinding.ItemRecordBinding
+import edu.guigu.accountbook.util.DateUtils
 
-class RecordAdapter : RecyclerView.Adapter<RecordAdapter.RecordViewHolder>() {
+class RecordAdapter(
+    private val onItemClick: (Record) -> Unit,
+    private val onItemLongClick: (Record) -> Unit
+) : RecyclerView.Adapter<RecordAdapter.RecordViewHolder>() {
 
-    data class FakeRecord(
-        val icon: String,
-        val iconColor: Int,
-        val category: String,
-        val date: String,
-        val note: String?,
-        val amount: String,
-        val amountColor: Int
-    )
+    private val records = mutableListOf<Record>()
 
-    private val records = listOf(
-        FakeRecord("餐", 0xFFFF6B6B.toInt(), "何胤霖", "2025年05月24日", "午餐外卖",
-            "-¥35.50", 0xFFE74C3C.toInt()),
-        FakeRecord("薪", 0xFF2ECC71.toInt(), "工资", "2025年05月15日", null,
-            "+¥8000.00", 0xFF2ECC71.toInt()),
-        FakeRecord("交", 0xFF4ECDC4.toInt(), "交通", "2025年05月23日", "地铁通勤",
-            "-¥12.00", 0xFFE74C3C.toInt()),
-        FakeRecord("购", 0xFF45B7D1.toInt(), "购物", "2025年05月22日", null,
-            "-¥258.00", 0xFFE74C3C.toInt()),
-        FakeRecord("娱", 0xFF96CEB4.toInt(), "娱乐", "2025年05月20日", "电影票",
-            "-¥79.90", 0xFFE74C3C.toInt()),
-    )
+    fun updateRecords(newRecords: List<Record>) {
+        records.clear()
+        records.addAll(newRecords)
+        notifyDataSetChanged()
+    }
 
     override fun getItemCount(): Int = records.size
 
@@ -47,24 +38,30 @@ class RecordAdapter : RecyclerView.Adapter<RecordAdapter.RecordViewHolder>() {
     inner class RecordViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val binding = ItemRecordBinding.bind(itemView)
 
-        fun bind(record: FakeRecord) {
-            binding.tvCategoryIcon.text = record.icon
-            binding.tvCategoryIcon.background.mutate()?.let { drawable ->
-                (drawable as? android.graphics.drawable.GradientDrawable)?.setColor(record.iconColor)
-            }
+        fun bind(record: Record) {
+            val color = Record.getCategoryColor(record.category)
+
+            binding.tvCategoryIcon.text = record.category.first().toString()
+            (binding.tvCategoryIcon.background.mutate() as? android.graphics.drawable.GradientDrawable)
+                ?.setColor(color)
 
             binding.tvCategoryName.text = record.category
-            binding.tvDate.text = record.date
+            binding.tvDate.text = DateUtils.formatDate(record.date)
 
-            if (record.note != null) {
+            if (!record.note.isNullOrBlank()) {
                 binding.tvNote.text = "备注：${record.note}"
                 binding.tvNote.visibility = View.VISIBLE
             } else {
                 binding.tvNote.visibility = View.GONE
             }
 
-            binding.tvAmount.text = record.amount
-            binding.tvAmount.setTextColor(record.amountColor)
+            val isIncome = record.type == Record.TYPE_INCOME
+            val prefix = if (isIncome) "+" else "-"
+            binding.tvAmount.text = "${prefix}¥${DateUtils.formatAmount(record.amount)}"
+            binding.tvAmount.setTextColor(Color.parseColor(if (isIncome) "#2ECC71" else "#E74C3C"))
+
+            itemView.setOnClickListener { onItemClick(record) }
+            itemView.setOnLongClickListener { onItemLongClick(record); true }
         }
     }
 }
