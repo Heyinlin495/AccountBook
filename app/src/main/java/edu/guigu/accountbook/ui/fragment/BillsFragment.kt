@@ -1,20 +1,27 @@
 package edu.guigu.accountbook.ui.fragment
 
+import android.app.DatePickerDialog
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.widget.SearchView
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.setFragmentResultListener
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
+import edu.guigu.accountbook.data.database.AppDatabase
 import edu.guigu.accountbook.data.model.Record
 import edu.guigu.accountbook.databinding.FragmentBillsBinding
 import edu.guigu.accountbook.ui.adapter.RecordAdapter
 import edu.guigu.accountbook.ui.dialog.AddEditRecordDialog
 import edu.guigu.accountbook.ui.viewmodel.RecordViewModel
 import edu.guigu.accountbook.util.DateUtils
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
+import java.util.Calendar
 
 class BillsFragment : Fragment() {
 
@@ -45,6 +52,29 @@ class BillsFragment : Fragment() {
         }
 
         binding.fabAdd.setOnClickListener { showAddDialog() }
+
+        setupFilter()
+        setupSearch()
+
+        // 监听弹窗返回结果
+        setFragmentResultListener(AddEditRecordDialog.REQUEST_KEY) { _, bundle ->
+            val record = Record(
+                id = bundle.getLong(AddEditRecordDialog.RESULT_RECORD_ID),
+                type = bundle.getInt(AddEditRecordDialog.RESULT_RECORD_TYPE),
+                category = bundle.getString(AddEditRecordDialog.RESULT_RECORD_CATEGORY, "其他"),
+                amount = bundle.getDouble(AddEditRecordDialog.RESULT_RECORD_AMOUNT),
+                note = bundle.getString(AddEditRecordDialog.RESULT_RECORD_NOTE),
+                date = bundle.getLong(AddEditRecordDialog.RESULT_RECORD_DATE)
+            )
+            val isEdit = bundle.getBoolean(AddEditRecordDialog.RESULT_IS_EDIT)
+            if (isEdit) {
+                viewModel.update(record)
+                Toast.makeText(requireContext(), "记录已更新", Toast.LENGTH_SHORT).show()
+            } else {
+                viewModel.insert(record)
+                Toast.makeText(requireContext(), "记录已添加", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     override fun onDestroyView() {
@@ -52,29 +82,85 @@ class BillsFragment : Fragment() {
         _binding = null
     }
 
-    /** 弹出添加弹窗 */
+    private fun setupFilter() {
+        binding.chipFilter.setOnClickListener { showMonthPicker() }
+
+        binding.chipFilter.setOnCloseIconClickListener {
+            binding.chipFilter.isChecked = false
+            viewModel.setFilterMonth(null, null)
+        }
+    }
+
+    private fun showMonthPicker() {
+        val cal = Calendar.getInstance()
+        DatePickerDialog(
+            requireContext(),
+            { _, year, month, _ ->
+                binding.chipFilter.isChecked = true
+                binding.chipFilter.text = "${year}年${month + 1}月"
+                viewModel.setFilterMonth(year, month)
+            },
+            cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), 1
+        ).apply {
+            datePicker.findViewById<View>(
+                resources.getIdentifier("day", "id", "android")
+            )?.visibility = View.GONE
+        }.show()
+    }
+
+    private fun setupSearch() {
+        binding.btnSearch.setOnClickListener {
+            if (binding.searchView.visibility == View.GONE) {
+                binding.searchView.visibility = View.VISIBLE
+                binding.searchView.isIconified = false
+            } else {
+                binding.searchView.visibility = View.GONE
+                binding.searchView.setQuery("", false)
+                lifecycleScope.launch {
+                    val results = AppDatabase.getInstance(requireContext()).recordDao().getAllRecords()
+                    adapter.updateRecords(results)
+                }
+            }
+        }
+
+        binding.searchView.setOnCloseListener {
+            binding.searchView.visibility = View.GONE
+            lifecycleScope.launch {
+                val results = AppDatabase.getInstance(requireContext()).recordDao().getAllRecords()
+                adapter.updateRecords(results)
+            }
+            false
+        }
+
+        binding.searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
+            override fun onQueryTextSubmit(query: String?): Boolean = false
+
+            override fun onQueryTextChange(newText: String?): Boolean {
+                // 每输入一个字就实时过滤
+                val keyword = newText?.trim() ?: ""
+                lifecycleScope.launch {
+                    val results = if (keyword.isBlank()) {
+                        AppDatabase.getInstance(requireContext()).recordDao().getAllRecords()
+                    } else {
+                        AppDatabase.getInstance(requireContext()).recordDao().searchRecords(keyword)
+                    }
+                    adapter.updateRecords(results)
+                }
+                return true
+            }
+        })
+    }
+
     private fun showAddDialog() {
-        AddEditRecordDialog(
-            editRecord = null,
-            onSave = { record ->
-                viewModel.insert(record)
-                Toast.makeText(requireContext(), "记录已添加", Toast.LENGTH_SHORT).show()
-            }
-        ).show(parentFragmentManager, "AddEditDialog")
+        AddEditRecordDialog.newInstance()
+            .show(parentFragmentManager, "AddEditDialog")
     }
 
-    /** 弹出编辑弹窗 */
     private fun showEditDialog(record: Record) {
-        AddEditRecordDialog(
-            editRecord = record,
-            onSave = { updatedRecord ->
-                viewModel.update(updatedRecord)
-                Toast.makeText(requireContext(), "记录已更新", Toast.LENGTH_SHORT).show()
-            }
-        ).show(parentFragmentManager, "AddEditDialog")
+        AddEditRecordDialog.newInstance(record)
+            .show(parentFragmentManager, "AddEditDialog")
     }
 
-    /** 删除确认对话框 */
     private fun showDeleteConfirmDialog(record: Record) {
         AlertDialog.Builder(requireContext())
             .setTitle("删除确认")

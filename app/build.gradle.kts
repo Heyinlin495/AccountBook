@@ -49,5 +49,9 @@ dependencies {
     // ViewPager2（Tab 切换）
     implementation(libs.androidx.viewpager2)
     // 图表库
-    // implementation(libs.mpandroidchart)
+    implementation(libs.mpandroidchart)
+    // 测试
+    testImplementation(libs.junit)
+    androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.androidx.espresso.core)
 }
