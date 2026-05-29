@@ -29,14 +29,14 @@ data class Record(
         const val TYPE_INCOME = 1
 
         val EXPENSE_CATEGORIES = listOf(
-            "餐饮" to 0xFFFF6B6B.toInt(),
-            "交通" to 0xFF4ECDC4.toInt(),
-            "购物" to 0xFF45B7D1.toInt(),
-            "娱乐" to 0xFF96CEB4.toInt(),
-            "住房" to 0xFFFFEAA7.toInt(),
-            "医疗" to 0xFFDDA0DD.toInt(),
-            "教育" to 0xFF98D8C8.toInt(),
-            "其他" to 0xFFBBBBBB.toInt()
+            "餐饮" to 0xFFFF6B6B.toInt(),   // 红色
+            "交通" to 0xFF5C6BC0.toInt(),   // 靛蓝
+            "购物" to 0xFFFF9800.toInt(),   // 橙色
+            "娱乐" to 0xFFAB47BC.toInt(),   // 紫色
+            "住房" to 0xFF26A69A.toInt(),   // 深青
+            "医疗" to 0xFFEC407A.toInt(),   // 粉红
+            "教育" to 0xFFFFCA28.toInt(),   // 琥珀黄
+            "其他" to 0xFFBDBDBD.toInt()    // 灰色
         )
 
         val INCOME_CATEGORIES = listOf(
